@@ -28,7 +28,8 @@ class HLDWorkflow:
     def _create_graph(self) -> Runnable:
         """Create the appropriate workflow graph"""
         if self.workflow_type == "parallel":
-            return create_parallel_workflow_graph()
+            # Use optimized sequential execution to avoid LangGraph concurrent update issues
+            return create_parallel_workflow_graph()  # This is now optimized sequential
         elif self.workflow_type == "conditional":
             return create_conditional_workflow_graph()
         else:
