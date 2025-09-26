@@ -91,6 +91,31 @@ python test_agent_fix.py
 
 ---
 
+### 5. ✅ Parallel Workflow Concurrent Update Error
+
+**Issue:**
+```
+Workflow execution failed: At key 'root': Can receive only one value per step. Use an Annotated key to handle multiple values. For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/INVALID_CONCURRENT_GRAPH_UPDATE
+```
+
+**Files Fixed:**
+- `workflow/graph.py`
+- `workflow/hld_workflow.py`
+- `main.py`
+
+**Changes Made:**
+- ✅ Redesigned parallel workflow to use optimized sequential execution
+- ✅ Avoided concurrent state updates that cause LangGraph conflicts
+- ✅ Updated workflow descriptions in UI
+- ✅ Added proper documentation about workflow types
+
+**Verification:**
+```bash
+python test_parallel_fix.py
+```
+
+---
+
 ## 🧪 Test Scripts Created
 
 ### 1. `test_pydantic_fix.py`
@@ -112,6 +137,11 @@ python test_agent_fix.py
 - Added Pydantic compatibility check
 - Added comprehensive system validation
 - Added troubleshooting commands
+
+### 5. `test_parallel_fix.py`
+- Tests parallel workflow creation and structure
+- Verifies all workflow types work correctly
+- Confirms concurrent update error is resolved
 
 ---
 
@@ -168,6 +198,7 @@ streamlit run main.py
 | LangGraph | ✅ Fixed | Imports updated for newer version |
 | Streamlit | ✅ Fixed | Deprecation warnings resolved |
 | Agents | ✅ Fixed | Status update error resolved |
+| Parallel Workflow | ✅ Fixed | Concurrent update error resolved |
 | PDF Detection | ✅ Working | 9 sample PDFs detected |
 | UI Enhancement | ✅ Complete | Better user experience |
 | Documentation | ✅ Complete | Comprehensive guides added |
