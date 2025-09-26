@@ -3,7 +3,7 @@ Schema definitions and validation for HLD generation
 """
 
 from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 # Re-export main models for convenience
@@ -25,18 +25,20 @@ from .models import (
 class ConfigSchema(BaseModel):
     """Configuration schema for HLD generation"""
     render_images: bool = True
-    image_format: str = Field(default="png", regex="^(svg|png)$")
-    renderer: str = Field(default="kroki", regex="^(kroki|mmdc)$")
+    image_format: str = Field(default="png", pattern="^(svg|png)$")
+    renderer: str = Field(default="kroki", pattern="^(kroki|mmdc)$")
     save_sources: bool = True
-    theme: str = Field(default="default", regex="^(default|neutral|dark)$")
+    theme: str = Field(default="default", pattern="^(default|neutral|dark)$")
     
-    @validator('image_format')
+    @field_validator('image_format')
+    @classmethod
     def validate_image_format(cls, v):
         if v not in ['svg', 'png']:
             raise ValueError('image_format must be svg or png')
         return v
     
-    @validator('renderer')
+    @field_validator('renderer')
+    @classmethod
     def validate_renderer(cls, v):
         if v not in ['kroki', 'mmdc']:
             raise ValueError('renderer must be kroki or mmdc')
