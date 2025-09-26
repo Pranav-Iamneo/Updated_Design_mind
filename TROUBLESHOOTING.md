@@ -185,7 +185,30 @@ git pull origin main
 
 ### 🔄 LangGraph Workflow Errors
 
-**Error Message:**
+**Error Message (Parallel Workflow):**
+```
+Workflow execution failed: At key 'root': Can receive only one value per step. Use an Annotated key to handle multiple values. For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/INVALID_CONCURRENT_GRAPH_UPDATE
+```
+
+**Solution:**
+This error occurs when multiple nodes try to update the same state keys simultaneously in parallel workflows. The issue has been fixed.
+
+```bash
+# The parallel workflow now uses optimized sequential execution
+# This avoids concurrent state update conflicts while maintaining performance
+
+# Use Sequential workflow for most reliable execution
+# Use Parallel workflow for optimized sequential execution  
+# Use Conditional workflow for smart routing
+```
+
+**What was fixed:**
+- ✅ Redesigned parallel workflow to avoid concurrent state updates
+- ✅ Parallel workflow now uses optimized sequential execution
+- ✅ Added proper error handling and state management
+- ✅ Updated UI descriptions to reflect the changes
+
+**General Workflow Error Message:**
 ```
 Workflow execution failed: ...
 ```
