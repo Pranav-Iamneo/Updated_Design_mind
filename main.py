@@ -213,12 +213,39 @@ def render_risks_ui(risks_data):
         st.dataframe(pd.DataFrame(rows), use_container_width=True)
 
 def list_requirement_pdfs(folder: str = "data") -> List[str]:
-    """List available PDF files"""
+    """List available PDF files with detailed information"""
     base = Path(folder)
     if not base.exists():
         base.mkdir(parents=True, exist_ok=True)
         return []
-    return sorted([str(p) for p in base.glob("*.pdf")])
+    
+    pdf_files = []
+    for pdf_path in base.glob("*.pdf"):
+        # Only include actual PDF files (not .gitkeep or other files)
+        if pdf_path.is_file() and pdf_path.suffix.lower() == '.pdf':
+            pdf_files.append(str(pdf_path))
+    
+    return sorted(pdf_files)
+
+def get_pdf_info(pdf_path: str) -> Dict[str, Any]:
+    """Get information about a PDF file"""
+    path = Path(pdf_path)
+    if not path.exists():
+        return {}
+    
+    try:
+        stat = path.stat()
+        size_mb = stat.st_size / (1024 * 1024)
+        modified = datetime.fromtimestamp(stat.st_mtime)
+        
+        return {
+            "name": path.name,
+            "size_mb": round(size_mb, 2),
+            "modified": modified.strftime("%Y-%m-%d %H:%M"),
+            "path": str(path)
+        }
+    except Exception:
+        return {"name": path.name, "path": str(path)}
 
 def main():
     """Main Streamlit application"""
@@ -258,15 +285,38 @@ def main():
         st.info(f"🔧 **Workflow:** {workflow_type.title()}")
         if pdf_files:
             st.success(f"📁 Found {len(pdf_files)} PDF files")
+            
+            # Show PDF file details
+            with st.expander("📋 View PDF Details", expanded=False):
+                pdf_data = []
+                for pdf_path in pdf_files:
+                    info = get_pdf_info(pdf_path)
+                    if info:
+                        pdf_data.append({
+                            "File": info["name"],
+                            "Size (MB)": info.get("size_mb", "N/A"),
+                            "Modified": info.get("modified", "N/A")
+                        })
+                
+                if pdf_data:
+                    df = pd.DataFrame(pdf_data)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.warning("📁 No PDF files found in `data/` folder")
+            st.info("💡 **Tip:** Upload PDF files to the `data/` folder to get started.")
     
-    # Get selected PDF path
+    # Get selected PDF path and show file info
     selected_path = None
     if selected_label != "— Select a requirements file —":
         try:
             selected_index = file_names.index(selected_label)
             selected_path = pdf_files[selected_index]
+            
+            # Show selected file information
+            if selected_path:
+                info = get_pdf_info(selected_path)
+                if info:
+                    st.info(f"📄 **Selected:** {info['name']} ({info.get('size_mb', 'N/A')} MB)")
         except ValueError:
             selected_path = None
     
