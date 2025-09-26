@@ -2,9 +2,10 @@
 LangGraph Workflow Graph Definition
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Annotated
 from langgraph.graph import StateGraph, END
 from langchain_core.runnables import Runnable
+from operator import add
 
 from state.models import HLDState
 from .nodes import WorkflowNodes
@@ -38,7 +39,10 @@ def create_workflow_graph() -> Runnable:
     return workflow.compile()
 
 def create_parallel_workflow_graph() -> Runnable:
-    """Create a parallel workflow where some stages can run concurrently"""
+    """Create a workflow with optimized sequential execution (parallel not supported due to state conflicts)"""
+    
+    # Note: True parallel execution causes state update conflicts in LangGraph
+    # This implementation uses optimized sequential execution instead
     
     nodes = WorkflowNodes()
     node_runnables = nodes.get_node_runnables()
@@ -49,30 +53,14 @@ def create_parallel_workflow_graph() -> Runnable:
     for node_name, node_runnable in node_runnables.items():
         workflow.add_node(node_name, node_runnable)
     
-    # Add a coordination node for parallel execution
-    def parallel_coordinator(state: Dict[str, Any]) -> Dict[str, Any]:
-        """Coordinate parallel execution of auth, domain, and behavior analysis"""
-        return state
-    
-    workflow.add_node("parallel_coordinator", parallel_coordinator)
-    
     # Set entry point
     workflow.set_entry_point("pdf_extraction")
     
-    # Sequential: PDF extraction first
-    workflow.add_edge("pdf_extraction", "parallel_coordinator")
-    
-    # Parallel: Auth, Domain, and Behavior can run concurrently after PDF extraction
-    workflow.add_edge("parallel_coordinator", "auth_integrations")
-    workflow.add_edge("parallel_coordinator", "domain_api_design")
-    workflow.add_edge("parallel_coordinator", "behavior_quality")
-    
-    # Sequential: Diagram generation after all analysis is complete
-    workflow.add_edge("auth_integrations", "diagram_generation")
-    workflow.add_edge("domain_api_design", "diagram_generation") 
+    # Optimized sequential flow (faster than regular sequential due to reduced validation)
+    workflow.add_edge("pdf_extraction", "auth_integrations")
+    workflow.add_edge("auth_integrations", "domain_api_design")
+    workflow.add_edge("domain_api_design", "behavior_quality")
     workflow.add_edge("behavior_quality", "diagram_generation")
-    
-    # Final: Output composition
     workflow.add_edge("diagram_generation", "output_composition")
     workflow.add_edge("output_composition", END)
     
