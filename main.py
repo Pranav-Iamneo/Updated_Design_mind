@@ -253,6 +253,15 @@ def main():
     st.title("🧠 DesignMind – LangGraph-Powered Architecture")
     st.caption("AI-driven High-Level Design generation using LangGraph workflows. Pick a requirements PDF and generate comprehensive architectural documentation.")
     
+    # Quick overview of available PDFs
+    pdf_files = list_requirement_pdfs()
+    if pdf_files:
+        st.success(f"🎉 **Ready to go!** Found {len(pdf_files)} requirement documents: {', '.join([Path(p).name for p in pdf_files[:3]])}{'...' if len(pdf_files) > 3 else ''}")
+    else:
+        st.warning("🚨 **No PDF files found!** Please upload requirement documents to the `data/` folder first.")
+        st.info("📚 **Expected files:** Requirement-1.pdf, Banking-System-PRD.pdf, E-commerce-Requirements.pdf, etc.")
+        st.stop()
+    
     # Sidebar configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
@@ -276,34 +285,46 @@ def main():
     left, right = st.columns([2, 1])
     
     with left:
-        pdf_files = list_requirement_pdfs()
+        st.subheader("📄 Select Requirements Document")
         file_names = [Path(p).name for p in pdf_files]
         options = ["— Select a requirements file —"] + file_names
-        selected_label = st.selectbox("Requirements document:", options, index=0)
+        selected_label = st.selectbox(
+            "Choose a PDF document to analyze:", 
+            options, 
+            index=0,
+            help="Select one of the uploaded PDF requirement documents to generate HLD"
+        )
     
     with right:
-        st.info(f"🔧 **Workflow:** {workflow_type.title()}")
-        if pdf_files:
-            st.success(f"📁 Found {len(pdf_files)} PDF files")
+        st.subheader("🔧 Configuration")
+        st.info(f"**Workflow Mode:** {workflow_type.title()}")
+        
+        # PDF Statistics
+        st.metric(
+            label="📁 Available Documents", 
+            value=len(pdf_files),
+            help="Number of PDF files found in data/ folder"
+        )
+        
+        # Show PDF file details
+        with st.expander("📋 View All PDF Details", expanded=False):
+            pdf_data = []
+            total_size = 0
+            for pdf_path in pdf_files:
+                info = get_pdf_info(pdf_path)
+                if info:
+                    size_mb = info.get("size_mb", 0)
+                    total_size += size_mb if isinstance(size_mb, (int, float)) else 0
+                    pdf_data.append({
+                        "File": info["name"],
+                        "Size (MB)": size_mb,
+                        "Modified": info.get("modified", "N/A")
+                    })
             
-            # Show PDF file details
-            with st.expander("📋 View PDF Details", expanded=False):
-                pdf_data = []
-                for pdf_path in pdf_files:
-                    info = get_pdf_info(pdf_path)
-                    if info:
-                        pdf_data.append({
-                            "File": info["name"],
-                            "Size (MB)": info.get("size_mb", "N/A"),
-                            "Modified": info.get("modified", "N/A")
-                        })
-                
-                if pdf_data:
-                    df = pd.DataFrame(pdf_data)
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
-            st.warning("📁 No PDF files found in `data/` folder")
-            st.info("💡 **Tip:** Upload PDF files to the `data/` folder to get started.")
+            if pdf_data:
+                st.caption(f"Total size: {round(total_size, 2)} MB")
+                df = pd.DataFrame(pdf_data)
+                st.dataframe(df, use_container_width=True, hide_index=True)
     
     # Get selected PDF path and show file info
     selected_path = None
@@ -316,12 +337,24 @@ def main():
             if selected_path:
                 info = get_pdf_info(selected_path)
                 if info:
-                    st.info(f"📄 **Selected:** {info['name']} ({info.get('size_mb', 'N/A')} MB)")
+                    st.success(f"📄 **Selected:** {info['name']} ({info.get('size_mb', 'N/A')} MB, modified {info.get('modified', 'N/A')})")
         except ValueError:
             selected_path = None
     
     # Generate HLD button
-    if st.button("🚀 Generate HLD", type="primary", disabled=not selected_path):
+    st.divider()
+    
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+    with col_btn2:
+        generate_button = st.button(
+            "🚀 Generate High-Level Design", 
+            type="primary", 
+            disabled=not selected_path,
+            use_container_width=True,
+            help="Start the LangGraph workflow to generate comprehensive HLD documentation"
+        )
+    
+    if generate_button:
         if not selected_path:
             st.warning("Please choose a requirements PDF.")
             st.stop()
@@ -356,6 +389,7 @@ def main():
                 
                 if result.success:
                     status_placeholder.success(f"✅ HLD generated successfully in {result.processing_time:.2f}s")
+                    st.balloons()  # Celebration animation
                     
                     # Display results
                     state = result.state
