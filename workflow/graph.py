@@ -3,7 +3,7 @@ LangGraph Workflow Graph Definition
 """
 
 from typing import Dict, Any
-from langgraph import StateGraph, END
+from langgraph.graph import StateGraph, END
 from langchain_core.runnables import Runnable
 
 from state.models import HLDState
