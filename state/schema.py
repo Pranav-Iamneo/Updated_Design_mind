@@ -50,7 +50,8 @@ class WorkflowInput(BaseModel):
     requirement_name: Optional[str] = None
     config: ConfigSchema = Field(default_factory=ConfigSchema)
     
-    @validator('pdf_path')
+    @field_validator('pdf_path')
+    @classmethod
     def validate_pdf_path(cls, v):
         if not v.endswith('.pdf'):
             raise ValueError('pdf_path must end with .pdf')
