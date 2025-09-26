@@ -271,7 +271,7 @@ def main():
             "Workflow Type",
             ["sequential", "parallel", "conditional"],
             index=0,
-            help="Sequential: One stage at a time. Parallel: Some stages run concurrently. Conditional: Smart routing based on state."
+            help="Sequential: One stage at a time (most reliable). Parallel: Optimized sequential execution. Conditional: Smart routing based on state."
         )
         
         # Diagram configuration
