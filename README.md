@@ -98,8 +98,9 @@ GEMINI_API_KEY_4=your_pdf_key
 
 ### 3. Add Requirements
 ```bash
-# Place PDF files in data directory
-mkdir -p data
+# The repository already includes 9 sample PDF requirements:
+# Requirement-1.pdf through Requirement-10.pdf (excluding 4)
+# You can also add your own PDF files:
 cp your-requirements.pdf data/
 ```
 
@@ -109,6 +110,18 @@ streamlit run main.py
 ```
 
 Visit `http://localhost:8501` to access the application.
+
+### 5. Quick System Check
+```bash
+# Run comprehensive system validation
+python setup_guide.py check
+
+# Validate uploaded PDF files
+python setup_guide.py validate
+
+# Create sample .env file
+python setup_guide.py env
+```
 
 ## 🏗️ Architecture Overview
 
@@ -184,18 +197,22 @@ class HLDState(BaseModel):
 
 ## 🎨 User Interface
 
-### **🖥️ Streamlit Dashboard**
-- **📁 PDF Selection**: Browse and select requirements documents
-- **⚙️ Workflow Configuration**: Choose execution mode and settings
-- **📊 Real-time Progress**: Live status updates and error tracking
-- **🎯 Rich Visualization**: Interactive diagrams and data tables
-- **💾 Export Options**: Multiple output formats (MD, HTML, images)
+### **🖥️ Enhanced Streamlit Dashboard**
+- **📁 Smart PDF Detection**: Automatically discovers and validates PDF files
+- **📊 File Information**: Shows file sizes, modification dates, and metadata
+- **⚙️ Workflow Configuration**: Choose execution mode and diagram settings
+- **📈 Real-time Progress**: Live status updates with detailed error tracking
+- **🎯 Rich Visualization**: Interactive Mermaid diagrams and data tables
+- **💾 Multiple Exports**: Download HLD.md, HLD.html, and Diagrams.html
+- **🎉 Success Animations**: Visual feedback for completed workflows
 
-### **📊 Workflow Monitoring**
-- **Stage Status**: Real-time progress tracking
+### **📊 Advanced Workflow Monitoring**
+- **Stage Status**: Real-time progress tracking with timestamps
 - **Error Handling**: Detailed error messages and recovery suggestions
-- **Performance Metrics**: Processing time and resource usage
-- **State Inspection**: Full workflow state visibility
+- **Performance Metrics**: Processing time and resource usage statistics
+- **State Inspection**: Full workflow state visibility and debugging
+- **PDF Analytics**: File size analysis and validation status
+- **Success Celebrations**: Visual feedback with animations
 
 ## 🔧 Advanced Configuration
 
@@ -241,6 +258,29 @@ result = await workflow.arun(input_data)
 async for update in workflow.stream(input_data):
     print(f"Stage: {update.get('stage')}, Status: {update.get('status')}")
 ```
+
+## 📄 Sample Requirements Included
+
+The repository comes with **9 sample PDF requirements** ready for testing:
+
+| File | Description | Use Case |
+|------|-------------|----------|
+| `Requirement-1.pdf` | Banking system requirements | Financial services architecture |
+| `Requirement-2.pdf` | E-commerce platform specs | Online retail system design |
+| `Requirement-3.pdf` | Healthcare management system | Medical records and patient management |
+| `Requirement-5.pdf` | IoT device management | Smart device orchestration |
+| `Requirement-6.pdf` | Social media platform | User engagement and content management |
+| `Requirement-7.pdf` | Supply chain management | Logistics and inventory tracking |
+| `Requirement-8.pdf` | Educational platform | Learning management system |
+| `Requirement-9.pdf` | Travel booking system | Reservation and booking management |
+| `Requirement-10.pdf` | Real estate platform | Property management and listings |
+
+### **🚀 Quick Start with Samples**
+1. Run `streamlit run main.py`
+2. Select any of the pre-loaded requirements
+3. Choose your workflow type (Sequential/Parallel/Conditional)
+4. Click "🚀 Generate High-Level Design"
+5. Watch the LangGraph workflow in action!
 
 ## 📊 Output Artifacts
 
