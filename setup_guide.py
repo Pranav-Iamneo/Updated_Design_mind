@@ -32,6 +32,18 @@ def check_dependencies():
         'requests'
     ]
     
+    # Check Pydantic version specifically
+    try:
+        import pydantic
+        version = pydantic.VERSION
+        if version.startswith('1.'):
+            print(f"⚠️ pydantic v{version} (v2.5+ recommended)")
+            print("   Run: pip install 'pydantic>=2.5.0' --upgrade")
+        else:
+            print(f"✅ pydantic v{version}")
+    except ImportError:
+        print("❌ pydantic (not installed)")
+    
     missing_packages = []
     for package in required_packages:
         try:
@@ -137,6 +149,19 @@ def run_system_check():
         ("PDF Files", check_pdf_files)
     ]
     
+    # Add Pydantic compatibility check
+    def check_pydantic():
+        try:
+            from state.models import HLDState
+            from state.schema import ConfigSchema
+            print("✅ Pydantic v2 compatibility confirmed")
+            return True
+        except Exception as e:
+            print(f"❌ Pydantic compatibility issue: {e}")
+            return False
+    
+    checks.append(("Pydantic Compatibility", check_pydantic))
+    
     all_passed = True
     for check_name, check_func in checks:
         print(f"\n📋 Checking {check_name}...")
@@ -216,11 +241,33 @@ def main():
                     print(f"{status} {pdf_file.name}: {message}")
             else:
                 print("❌ data/ directory not found")
+        elif command == 'pydantic':
+            test_pydantic_compatibility()
         else:
             print("❌ Unknown command")
             show_help()
     else:
         show_help()
+
+def test_pydantic_compatibility():
+    """Test Pydantic v2 compatibility"""
+    print("🔍 Testing Pydantic v2 Compatibility...")
+    try:
+        # Test imports
+        from state.models import HLDState
+        from state.schema import ConfigSchema, WorkflowInput
+        print("✅ All Pydantic models imported successfully")
+        
+        # Test validation
+        config = ConfigSchema(image_format="png", renderer="kroki")
+        input_data = WorkflowInput(pdf_path="test.pdf", config=config)
+        print("✅ Pydantic validation working correctly")
+        
+        print("🎉 Pydantic v2 compatibility confirmed!")
+        
+    except Exception as e:
+        print(f"❌ Pydantic compatibility issue: {e}")
+        print("💡 Try: pip install 'pydantic>=2.5.0' --upgrade")
 
 def show_help():
     """Show help information"""
@@ -231,10 +278,12 @@ def show_help():
     print("  env       - Create sample .env file")
     print("  pdf       - Show PDF requirements and tips")
     print("  validate  - Validate PDF files in data/ directory")
+    print("  pydantic  - Test Pydantic v2 compatibility")
     print("\nExamples:")
     print("  python setup_guide.py check")
     print("  python setup_guide.py env")
     print("  python setup_guide.py validate")
+    print("  python setup_guide.py pydantic")
 
 if __name__ == "__main__":
     main()
