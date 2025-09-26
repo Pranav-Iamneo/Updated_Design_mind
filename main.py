@@ -76,7 +76,7 @@ def render_workflow_status(state):
     
     # Create status DataFrame
     df = pd.DataFrame(status_data)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
     
     # Show errors and warnings
     if state.errors:
@@ -119,7 +119,7 @@ def render_integrations_ui(integrations_data):
         })
     
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), width='stretch')
 
 def render_entities_ui(entities_data):
     """Render domain entities"""
@@ -136,7 +136,7 @@ def render_entities_ui(entities_data):
         })
     
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), width='stretch')
     
     # Entity details cards
     st.markdown("<div class='h3'>Entity Details</div>", unsafe_allow_html=True)
@@ -170,7 +170,7 @@ def render_apis_ui(apis_data):
         })
     
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), width='stretch')
 
 def render_use_cases_ui(use_cases):
     """Render use cases"""
@@ -210,7 +210,7 @@ def render_risks_ui(risks_data):
         })
     
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), width='stretch')
 
 def list_requirement_pdfs(folder: str = "data") -> List[str]:
     """List available PDF files with detailed information"""
@@ -324,7 +324,7 @@ def main():
             if pdf_data:
                 st.caption(f"Total size: {round(total_size, 2)} MB")
                 df = pd.DataFrame(pdf_data)
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, width='stretch', hide_index=True)
     
     # Get selected PDF path and show file info
     selected_path = None
@@ -350,7 +350,7 @@ def main():
             "🚀 Generate High-Level Design", 
             type="primary", 
             disabled=not selected_path,
-            use_container_width=True,
+            width='stretch',
             help="Start the LangGraph workflow to generate comprehensive HLD documentation"
         )
     
