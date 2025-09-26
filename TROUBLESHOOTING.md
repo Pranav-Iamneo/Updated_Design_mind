@@ -158,6 +158,31 @@ python setup_guide.py check
 
 ---
 
+### 🤖 Agent Processing Errors
+
+**Error Message:**
+```
+Authentication/integrations analysis failed: 'str' object has no attribute 'update_status'
+```
+
+**Solution:**
+This error was caused by incorrect parameter order in agent status updates. The issue has been fixed.
+
+```bash
+# Test the fix
+python test_agent_fix.py
+
+# If you still see this error, ensure you have the latest code:
+git pull origin main
+```
+
+**What was fixed:**
+- ✅ Fixed `update_state_status` calls to pass `state` object first, then `stage` string
+- ✅ Updated all agents to use correct parameter order
+- ✅ Added test verification for the fix
+
+---
+
 ### 🔄 LangGraph Workflow Errors
 
 **Error Message:**
