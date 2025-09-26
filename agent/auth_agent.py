@@ -69,7 +69,7 @@ class AuthIntegrationsAgent(BaseAgent):
             state.authentication = auth_data
             state.integrations = integrations_data
             
-            self.update_state_status(stage, "completed", "Authentication and integrations analysis completed")
+            self.update_state_status(state, stage, "completed", "Authentication and integrations analysis completed")
             
             return {
                 "success": True,
