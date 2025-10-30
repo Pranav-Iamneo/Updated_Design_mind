@@ -8,7 +8,7 @@ from langchain_core.runnables import Runnable
 from operator import add
 
 from state.models import HLDState
-from .nodes import WorkflowNodes
+from nodes import NodeManager
 
 # Define state schema with proper annotations for parallel updates
 class ParallelState(Dict[str, Any]):
@@ -23,20 +23,26 @@ def create_safe_parallel_workflow() -> Runnable:
     Create a truly parallel workflow using LangGraph's recommended patterns
     This avoids the INVALID_CONCURRENT_GRAPH_UPDATE error
     """
-    
-    nodes = WorkflowNodes()
+
+    node_manager = NodeManager()
     
     # Create state graph with proper state schema
     workflow = StateGraph(Dict[str, Any])
     
     # Add individual nodes
-    workflow.add_node("pdf_extraction", nodes.pdf_extraction_node)
-    
+    node_runnables = node_manager.get_node_runnables()
+    workflow.add_node("pdf_extraction", node_runnables["pdf_extraction"])
+
+    # Get individual nodes for use in parallel functions
+    auth_node = node_manager.get_node("auth_integrations")
+    domain_node = node_manager.get_node("domain_api_design")
+    behavior_node = node_manager.get_node("behavior_quality")
+
     # Create parallel processing nodes that don't conflict
     def auth_parallel_node(state: Dict[str, Any]) -> Dict[str, Any]:
         """Auth node that updates only its specific state keys"""
         hld_state = HLDState(**state)
-        result = nodes.auth_agent.process(hld_state)
+        result = auth_node.agent.process(hld_state)
         
         # Return only the specific updates for this node
         return {
@@ -48,7 +54,7 @@ def create_safe_parallel_workflow() -> Runnable:
     def domain_parallel_node(state: Dict[str, Any]) -> Dict[str, Any]:
         """Domain node that updates only its specific state keys"""
         hld_state = HLDState(**state)
-        result = nodes.domain_agent.process(hld_state)
+        result = domain_node.agent.process(hld_state)
         
         # Return only the specific updates for this node
         return {
@@ -60,7 +66,7 @@ def create_safe_parallel_workflow() -> Runnable:
     def behavior_parallel_node(state: Dict[str, Any]) -> Dict[str, Any]:
         """Behavior node that updates only its specific state keys"""
         hld_state = HLDState(**state)
-        result = nodes.behavior_agent.process(hld_state)
+        result = behavior_node.agent.process(hld_state)
         
         # Return only the specific updates for this node
         return {
@@ -98,8 +104,8 @@ def create_safe_parallel_workflow() -> Runnable:
     workflow.add_node("domain_parallel", domain_parallel_node)
     workflow.add_node("behavior_parallel", behavior_parallel_node)
     workflow.add_node("parallel_coordinator", parallel_coordinator)
-    workflow.add_node("diagram_generation", nodes.diagram_generation_node)
-    workflow.add_node("output_composition", nodes.output_composition_node)
+    workflow.add_node("diagram_generation", node_runnables["diagram_generation"])
+    workflow.add_node("output_composition", node_runnables["output_composition"])
     
     # Set entry point
     workflow.set_entry_point("pdf_extraction")
@@ -125,19 +131,24 @@ def create_batch_parallel_workflow() -> Runnable:
     """
     Alternative parallel approach using batch processing
     """
-    
-    nodes = WorkflowNodes()
+
+    node_manager = NodeManager()
     workflow = StateGraph(Dict[str, Any])
-    
+
     # Single batch processing node that handles multiple operations
     def batch_analysis_node(state: Dict[str, Any]) -> Dict[str, Any]:
         """Process auth, domain, and behavior analysis in a single node"""
         hld_state = HLDState(**state)
-        
+
+        # Get individual nodes
+        auth_node = node_manager.get_node("auth_integrations")
+        domain_node = node_manager.get_node("domain_api_design")
+        behavior_node = node_manager.get_node("behavior_quality")
+
         # Process all three analyses
-        auth_result = nodes.auth_agent.process(hld_state)
-        domain_result = nodes.domain_agent.process(hld_state)
-        behavior_result = nodes.behavior_agent.process(hld_state)
+        auth_result = auth_node.agent.process(hld_state)
+        domain_result = domain_node.agent.process(hld_state)
+        behavior_result = behavior_node.agent.process(hld_state)
         
         # Update state with all results
         updated_state = hld_state.dict()
@@ -150,10 +161,11 @@ def create_batch_parallel_workflow() -> Runnable:
         return updated_state
     
     # Add nodes
-    workflow.add_node("pdf_extraction", nodes.pdf_extraction_node)
+    node_runnables = node_manager.get_node_runnables()
+    workflow.add_node("pdf_extraction", node_runnables["pdf_extraction"])
     workflow.add_node("batch_analysis", batch_analysis_node)
-    workflow.add_node("diagram_generation", nodes.diagram_generation_node)
-    workflow.add_node("output_composition", nodes.output_composition_node)
+    workflow.add_node("diagram_generation", node_runnables["diagram_generation"])
+    workflow.add_node("output_composition", node_runnables["output_composition"])
     
     # Set entry point and edges
     workflow.set_entry_point("pdf_extraction")

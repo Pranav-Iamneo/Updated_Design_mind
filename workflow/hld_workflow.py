@@ -10,7 +10,7 @@ from langchain_core.runnables import Runnable
 
 from state.models import HLDState
 from state.schema import WorkflowInput, WorkflowOutput, ConfigSchema, create_initial_state
-from .graph import create_workflow_graph, create_parallel_workflow_graph, create_conditional_workflow_graph
+from graph import create_workflow_graph, create_parallel_workflow_graph, create_conditional_workflow_graph
 
 class HLDWorkflow:
     """Main workflow orchestrator for HLD generation"""
