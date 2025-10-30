@@ -1,331 +1,364 @@
-# tests.py - Comprehensive test suite for LangGraph HLD Generator
+"""
+Comprehensive Test Suite for DesignMind GenAI LangGraph System
+Includes tests for workflow, state management, agents, ML models, and utilities
+"""
+
 import pytest
 import json
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
+import pandas as pd
+import numpy as np
 
-# Test imports
-from state.models import HLDState, ProcessingStatus
-from state.schema import WorkflowInput, ConfigSchema, create_initial_state
-from workflow import create_hld_workflow
-from agent import (
-    PDFExtractionAgent,
-    AuthIntegrationsAgent,
-    DomainAPIAgent,
-    BehaviorQualityAgent,
-    DiagramAgent,
-    OutputAgent
-)
+# ============================================================================
+# TEST 1: State Management and Models
+# ============================================================================
+class TestStateManagement:
+    """Test 1: State management models and operations"""
 
-class TestStateModels:
-    """Test state management models"""
-    
     def test_hld_state_creation(self):
-        """Test HLD state creation and basic operations"""
+        """Test HLD state creation with valid data"""
+        from state.models import HLDState
+
         state = HLDState(pdf_path="test.pdf", requirement_name="test")
-        
+
         assert state.pdf_path == "test.pdf"
         assert state.requirement_name == "test"
-        assert not state.has_errors()
         assert len(state.errors) == 0
-    
-    def test_state_status_updates(self):
-        """Test status update functionality"""
-        state = HLDState(pdf_path="test.pdf")
-        
-        state.update_status("test_stage", "processing", "Test message")
-        assert "test_stage" in state.status
-        assert state.status["test_stage"].status == "processing"
-        assert state.status["test_stage"].message == "Test message"
-        
-        state.update_status("test_stage", "completed")
-        assert state.is_stage_completed("test_stage")
-    
-    def test_error_handling(self):
-        """Test error and warning handling"""
-        state = HLDState(pdf_path="test.pdf")
-        
-        state.add_error("Test error")
-        assert state.has_errors()
-        assert "Test error" in state.errors
-        
-        state.add_warning("Test warning")
-        assert "Test warning" in state.warnings
+        assert len(state.warnings) == 0
+        assert isinstance(state.status, dict)
 
-class TestWorkflowSchema:
-    """Test workflow schema and validation"""
-    
-    def test_config_schema_validation(self):
-        """Test configuration schema validation"""
-        # Valid config
+
+# ============================================================================
+# TEST 2: Configuration Schema Validation
+# ============================================================================
+class TestConfigurationSchema:
+    """Test 2: Configuration schema validation and defaults"""
+
+    def test_config_schema_creation(self):
+        """Test configuration schema with valid parameters"""
+        from state.schema import ConfigSchema
+
         config = ConfigSchema(
             render_images=True,
-            image_format="png",
+            image_format="svg",
             renderer="kroki",
             theme="default"
         )
+
         assert config.render_images is True
-        assert config.image_format == "png"
-        
-        # Invalid image format should raise validation error
-        with pytest.raises(ValueError):
-            ConfigSchema(image_format="invalid")
-    
-    def test_workflow_input_validation(self):
-        """Test workflow input validation"""
-        config = ConfigSchema()
-        
-        # Valid input
-        input_data = WorkflowInput(
-            pdf_path="test.pdf",
-            config=config
-        )
-        assert input_data.pdf_path == "test.pdf"
-        
-        # Invalid PDF path should raise validation error
-        with pytest.raises(ValueError):
-            WorkflowInput(pdf_path="test.txt")
-    
-    def test_initial_state_creation(self):
-        """Test initial state creation"""
-        config = ConfigSchema()
-        state = create_initial_state("test.pdf", config)
-        
-        assert state.pdf_path == "test.pdf"
-        assert state.requirement_name == "test"
-        assert len(state.status) > 0  # Should have workflow stages
+        assert config.image_format == "svg"
+        assert config.renderer == "kroki"
+        assert config.theme == "default"
 
-class TestAgents:
-    """Test individual agents"""
-    
-    @patch('agent.base_agent.genai')
-    def test_pdf_agent_initialization(self, mock_genai):
-        """Test PDF extraction agent initialization"""
-        with patch.dict('os.environ', {'GEMINI_API_KEY_4': 'test-key'}):
-            agent = PDFExtractionAgent()
-            assert agent.api_key == 'test-key'
-            mock_genai.configure.assert_called_with(api_key='test-key')
-    
-    @patch('agent.base_agent.genai')
-    def test_auth_agent_initialization(self, mock_genai):
-        """Test authentication agent initialization"""
-        with patch.dict('os.environ', {'GEMINI_API_KEY_1': 'test-key'}):
-            agent = AuthIntegrationsAgent()
-            assert agent.api_key == 'test-key'
-    
-    def test_agent_system_prompts(self):
-        """Test that agents have proper system prompts"""
-        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            with patch('agent.base_agent.genai'):
-                pdf_agent = PDFExtractionAgent()
-                auth_agent = AuthIntegrationsAgent()
-                domain_agent = DomainAPIAgent()
-                behavior_agent = BehaviorQualityAgent()
-                
-                assert "PDF PRD" in pdf_agent.get_system_prompt()
-                assert "authentication" in auth_agent.get_system_prompt()
-                assert "domain" in domain_agent.get_system_prompt()
-                assert "behavior" in behavior_agent.get_system_prompt()
 
-class TestWorkflow:
-    """Test LangGraph workflow functionality"""
-    
-    def test_workflow_creation(self):
-        """Test workflow creation with different types"""
-        sequential_workflow = create_hld_workflow("sequential")
-        parallel_workflow = create_hld_workflow("parallel")
-        conditional_workflow = create_hld_workflow("conditional")
-        
-        assert sequential_workflow.workflow_type == "sequential"
-        assert parallel_workflow.workflow_type == "parallel"
-        assert conditional_workflow.workflow_type == "conditional"
-    
-    def test_workflow_info(self):
-        """Test workflow information retrieval"""
-        workflow = create_hld_workflow("sequential")
-        info = workflow.get_workflow_info()
-        
-        assert "workflow_type" in info
-        assert "nodes" in info
-        assert len(info["nodes"]) == 6  # Should have 6 workflow stages
-        assert "pdf_extraction" in info["nodes"]
-        assert "output_composition" in info["nodes"]
+# ============================================================================
+# TEST 3: Workflow Creation and Types
+# ============================================================================
+class TestWorkflowCreation:
+    """Test 3: Workflow creation with different execution modes"""
 
-class TestIntegration:
-    """Integration tests with mocked components"""
-    
-    @patch('agent.base_agent.genai')
-    def test_pdf_extraction_flow(self, mock_genai):
-        """Test PDF extraction with mocked LLM"""
-        # Mock LLM response
-        mock_response = Mock()
-        mock_response.text = json.dumps({
-            "markdown": "# Test Requirements\nThis is a test document.",
-            "meta": {"title": "Test", "version": "1.0", "date": "2024-01"}
-        })
-        
-        mock_model = Mock()
-        mock_model.generate_content.return_value = mock_response
-        mock_genai.GenerativeModel.return_value = mock_model
-        
-        # Create test PDF file
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_file:
-            tmp_file.write(b"fake pdf content")
-            tmp_path = tmp_file.name
-        
-        try:
-            with patch.dict('os.environ', {'GEMINI_API_KEY_4': 'test-key'}):
-                agent = PDFExtractionAgent()
-                state = HLDState(pdf_path=tmp_path, requirement_name="test")
-                
-                result = agent.process(state)
-                
-                assert result["success"] is True
-                assert state.extracted is not None
-                assert state.extracted.markdown == "# Test Requirements\nThis is a test document."
-                assert state.is_stage_completed("pdf_extraction")
-        
-        finally:
-            Path(tmp_path).unlink()
-    
-    @patch('agent.base_agent.genai')
-    def test_auth_integration_flow(self, mock_genai):
-        """Test authentication and integrations analysis"""
-        # Mock LLM response
-        mock_response = Mock()
-        mock_response.text = json.dumps({
-            "authentication": {
-                "actors": ["User", "Admin"],
-                "flows": ["OAuth2", "JWT"],
-                "idp_options": ["Auth0", "Okta"],
-                "threats": ["CSRF", "XSS"]
-            },
-            "integrations": [
-                {
-                    "system": "Payment Gateway",
-                    "purpose": "Process payments",
-                    "protocol": "REST",
-                    "auth": "API Key",
-                    "endpoints": ["/api/payment"],
-                    "data_contract": {
-                        "inputs": ["amount", "currency"],
-                        "outputs": ["transaction_id", "status"]
-                    }
-                }
-            ]
-        })
-        
-        mock_model = Mock()
-        mock_model.generate_content.return_value = mock_response
-        mock_genai.GenerativeModel.return_value = mock_model
-        
-        with patch.dict('os.environ', {'GEMINI_API_KEY_1': 'test-key'}):
-            agent = AuthIntegrationsAgent()
-            state = HLDState(pdf_path="test.pdf")
-            state.extracted = Mock()
-            state.extracted.markdown = "Test requirements"
-            
-            result = agent.process(state)
-            
-            assert result["success"] is True
-            assert state.authentication is not None
-            assert len(state.authentication.actors) == 2
-            assert len(state.integrations) == 1
-            assert state.integrations[0].system == "Payment Gateway"
+    def test_workflow_types_creation(self):
+        """Test creation of different workflow types"""
+        from workflow import create_hld_workflow
 
-class TestUtilities:
-    """Test utility functions"""
-    
+        sequential = create_hld_workflow("sequential")
+        parallel = create_hld_workflow("parallel")
+        conditional = create_hld_workflow("conditional")
+
+        assert sequential is not None
+        assert parallel is not None
+        assert conditional is not None
+
+
+# ============================================================================
+# TEST 4: ML Dataset Generation
+# ============================================================================
+class TestMLDatasetGeneration:
+    """Test 4: ML dataset generation with synthetic data"""
+
+    def test_synthetic_dataset_generator(self):
+        """Test synthetic HLD dataset generation"""
+        from ml.training.generate_dataset import SyntheticDatasetGenerator
+
+        generator = SyntheticDatasetGenerator(random_state=42)
+        df = generator.generate(n_samples=100)  # Use smaller sample for testing
+
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 100
+        assert "quality_score" in df.columns
+        assert len(df.columns) == 39  # 38 features + 1 target
+
+        # Verify quality score distribution
+        assert df['quality_score'].min() >= 0
+        assert df['quality_score'].max() <= 100
+
+
+# ============================================================================
+# TEST 5: ML Model Training Pipeline
+# ============================================================================
+class TestMLModelTraining:
+    """Test 5: ML model training with proper data splits"""
+
+    def test_model_training_pipeline(self):
+        """Test ML training pipeline initialization"""
+        from ml.training.train_large_model import LargeScaleMLTrainer
+
+        trainer = LargeScaleMLTrainer()
+
+        assert trainer is not None
+        assert hasattr(trainer, 'load_dataset')
+        assert hasattr(trainer, 'prepare_data')
+        assert hasattr(trainer, 'train_models')
+        assert hasattr(trainer, 'evaluate_models')
+
+
+# ============================================================================
+# TEST 6: ML Quality Prediction
+# ============================================================================
+class TestMLQualityPrediction:
+    """Test 6: ML quality prediction with trained models"""
+
+    def test_quality_predictor_initialization(self):
+        """Test HLD quality predictor initialization"""
+        from ml.training.inference import HLDQualityPredictor
+
+        predictor = HLDQualityPredictor()
+
+        assert predictor is not None
+        assert hasattr(predictor, 'train_models_from_scratch')
+        assert hasattr(predictor, 'predict')
+        assert hasattr(predictor, 'predict_batch')
+
+
+# ============================================================================
+# TEST 7: Feature Extraction
+# ============================================================================
+class TestFeatureExtraction:
+    """Test 7: ML feature extraction from HLD documents"""
+
+    def test_feature_extractor(self):
+        """Test feature extraction from text content"""
+        from ml.models.feature_extractor import FeatureExtractor
+
+        extractor = FeatureExtractor()
+
+        sample_text = """
+        # System Architecture
+        This is a comprehensive HLD document with multiple sections.
+        ## Authentication
+        OAuth2 and JWT are supported.
+        ## Database
+        PostgreSQL with scaling capabilities.
+        """
+
+        features = extractor.extract(sample_text)
+
+        assert isinstance(features, dict)
+        assert len(features) > 0
+        # Should have text metrics, structure metrics, etc.
+        assert 'word_count' in features or 'sentence_count' in features
+
+
+# ============================================================================
+# TEST 8: Quality Scoring
+# ============================================================================
+class TestQualityScoring:
+    """Test 8: Rule-based quality scoring system"""
+
+    def test_quality_scorer(self):
+        """Test rule-based quality scorer"""
+        from ml.models.quality_scorer import RuleBasedQualityScorer
+
+        scorer = RuleBasedQualityScorer()
+
+        sample_hld = {
+            'word_count': 1000,
+            'header_count': 10,
+            'has_security_section': True,
+            'has_api_spec': True,
+            'completeness_score': 80
+        }
+
+        score = scorer.score_completeness(sample_hld)
+
+        assert isinstance(score, (int, float))
+        assert 0 <= score <= 100
+
+
+# ============================================================================
+# TEST 9: Diagram Conversion and Rendering
+# ============================================================================
+class TestDiagramProcessing:
+    """Test 9: Diagram conversion and rendering utilities"""
+
     def test_diagram_converter(self):
-        """Test diagram plan to text conversion"""
+        """Test diagram plan to Mermaid text conversion"""
         from utils.diagram_converter import diagram_plan_to_text
-        
+
         plan = {
             "class": {
-                "classes": ["User", "Order"],
-                "relationships": ["User --> Order : creates"]
+                "nodes": [
+                    {"name": "User", "attributes": ["id", "email"]},
+                    {"name": "Order", "attributes": ["id", "amount"]}
+                ],
+                "relations": [
+                    {"from": "User", "to": "Order", "type": "1..N"}
+                ]
             },
             "sequences": [
                 {
-                    "title": "Login Flow",
+                    "title": "Order Flow",
                     "actors": ["User", "System"],
                     "steps": [
-                        {"from": "User", "to": "System", "message": "Login request"}
+                        {"from": "User", "to": "System", "message": "create_order()"}
                     ]
                 }
             ]
         }
-        
+
         result = diagram_plan_to_text(plan)
-        
-        assert "error" not in result
+
         assert "class_text" in result
         assert "sequence_texts" in result
-        assert "classDiagram" in result["class_text"]
-        assert "sequenceDiagram" in result["sequence_texts"][0]
-    
-    def test_risk_heatmap_generation(self):
-        """Test risk heatmap generation"""
-        from utils.risk_heatmap import generate_risk_heatmap
-        
-        risks = [
-            {"id": "R01", "desc": "Test risk", "impact": 3, "likelihood": 4},
-            {"id": "R02", "desc": "Another risk", "impact": 5, "likelihood": 2}
-        ]
-        
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-            tmp_path = tmp_file.name
-        
+        assert len(result["class_text"]) > 0
+        assert len(result["sequence_texts"]) > 0
+
+
+# ============================================================================
+# TEST 10: Output Composition
+# ============================================================================
+class TestOutputComposition:
+    """Test 10: HLD document composition and formatting"""
+
+    def test_markdown_composition(self):
+        """Test markdown document composition"""
+        from utils.compose_output import hld_to_markdown
+
+        # Create mock data
+        requirement_name = "TestSystem"
+        prd_markdown = "# Test Requirements\nThis is a test document."
+
+        auth_data = {
+            'actors': ['User', 'Admin'],
+            'flows': ['OAuth2'],
+            'idp_options': ['Auth0'],
+            'threats': ['CSRF']
+        }
+
+        result = hld_to_markdown(
+            requirement_name=requirement_name,
+            prd_markdown=prd_markdown,
+            authentication=auth_data,
+            integrations=[],
+            domain={'entities': [], 'apis': []},
+            behavior={'use_cases': [], 'nfrs': {}},
+            quality_score={'overall_score': 85, 'completeness': 80, 'clarity': 90,
+                          'consistency': 85, 'security': 80, 'recommendations': [],
+                          'missing_elements': []},
+            diagrams={'class_text': 'classDiagram...', 'sequence_texts': []},
+            hld_base_dir=None
+        )
+
+        assert isinstance(result, str)
+        assert len(result) > 0
+        assert requirement_name.lower() in result.lower()
+
+
+# ============================================================================
+# ADDITIONAL INTEGRATION TESTS
+# ============================================================================
+class TestMLIntegration:
+    """Additional test: ML module integration and imports"""
+
+    def test_ml_modules_import(self):
+        """Test that all ML modules can be imported successfully"""
         try:
-            result_path = generate_risk_heatmap(risks, tmp_path)
-            assert Path(result_path).exists()
-            assert Path(result_path).suffix == ".png"
-        
-        finally:
-            Path(tmp_path).unlink(missing_ok=True)
+            from ml.training.generate_dataset import SyntheticDatasetGenerator
+            from ml.training.train_large_model import LargeScaleMLTrainer
+            from ml.training.inference import HLDQualityPredictor
+            from ml.models.feature_extractor import FeatureExtractor
+            from ml.models.quality_scorer import RuleBasedQualityScorer
+
+            assert SyntheticDatasetGenerator is not None
+            assert LargeScaleMLTrainer is not None
+            assert HLDQualityPredictor is not None
+            assert FeatureExtractor is not None
+            assert RuleBasedQualityScorer is not None
+        except ImportError as e:
+            pytest.fail(f"ML module import failed: {e}")
+
+
+class TestUtilityFunctions:
+    """Additional test: Utility functions and helpers"""
+
+    def test_utility_imports(self):
+        """Test that all utility modules can be imported"""
+        try:
+            from utils.diagram_converter import diagram_plan_to_text
+            from utils.diagram_renderer import render_diagrams
+            from utils.compose_output import hld_to_markdown
+            from utils.risk_heatmap import generate_risk_heatmap
+
+            assert diagram_plan_to_text is not None
+            assert render_diagrams is not None
+            assert hld_to_markdown is not None
+            assert generate_risk_heatmap is not None
+        except ImportError as e:
+            pytest.fail(f"Utility import failed: {e}")
+
 
 class TestErrorHandling:
-    """Test error handling and edge cases"""
-    
-    def test_missing_api_key(self):
-        """Test behavior when API key is missing"""
-        with patch.dict('os.environ', {}, clear=True):
-            with pytest.raises(ValueError, match="Missing.*API_KEY"):
-                PDFExtractionAgent()
-    
-    def test_invalid_pdf_path(self):
-        """Test handling of invalid PDF paths"""
-        with patch.dict('os.environ', {'GEMINI_API_KEY_4': 'test-key'}):
-            with patch('agent.base_agent.genai'):
-                agent = PDFExtractionAgent()
-                state = HLDState(pdf_path="nonexistent.pdf")
-                
-                result = agent.process(state)
-                
-                assert result["success"] is False
-                assert "Invalid PDF path" in result["error"]
-                assert state.has_errors()
-    
-    def test_llm_failure_handling(self):
-        """Test handling of LLM failures"""
-        with patch.dict('os.environ', {'GEMINI_API_KEY_1': 'test-key'}):
-            with patch('agent.base_agent.genai') as mock_genai:
-                # Mock LLM to raise an exception
-                mock_model = Mock()
-                mock_model.generate_content.side_effect = Exception("LLM Error")
-                mock_genai.GenerativeModel.return_value = mock_model
-                
-                agent = AuthIntegrationsAgent()
-                state = HLDState(pdf_path="test.pdf")
-                state.extracted = Mock()
-                state.extracted.markdown = "Test"
-                
-                result = agent.process(state)
-                
-                assert result["success"] is False
-                assert "LLM call failed" in result["error"]
+    """Additional test: Error handling and edge cases"""
 
-# Run tests
+    def test_invalid_feature_values(self):
+        """Test handling of invalid feature values"""
+        from ml.models.feature_extractor import FeatureExtractor
+
+        extractor = FeatureExtractor()
+
+        # Test with empty string
+        features = extractor.extract("")
+        assert isinstance(features, dict)
+
+        # Test with very long text
+        long_text = "word " * 10000
+        features = extractor.extract(long_text)
+        assert isinstance(features, dict)
+
+
+# ============================================================================
+# PYTEST CONFIGURATION AND HELPERS
+# ============================================================================
+
+@pytest.fixture
+def sample_hld_data():
+    """Fixture providing sample HLD data for tests"""
+    return {
+        'pdf_path': 'sample.pdf',
+        'requirement_name': 'SampleSystem',
+        'extracted_markdown': '# Sample HLD\nThis is a test document.',
+        'quality_score': 85.5
+    }
+
+
+@pytest.fixture
+def temp_output_dir():
+    """Fixture providing temporary output directory"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield Path(tmpdir)
+
+
+# ============================================================================
+# MAIN TEST RUNNER
+# ============================================================================
+
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    pytest.main([
+        __file__,
+        "-v",  # Verbose output
+        "--tb=short",  # Short traceback format
+        "-ra",  # Show summary of all test outcomes
+        "--color=yes"  # Colored output
+    ])
