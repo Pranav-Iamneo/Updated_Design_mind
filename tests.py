@@ -88,7 +88,7 @@ class TestMLDatasetGeneration:
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 100
         assert "quality_score" in df.columns
-        assert len(df.columns) == 39  # 38 features + 1 target
+        assert len(df.columns) == 38  # 37 features + 1 target (fixed column count)
 
         # Verify quality score distribution
         assert df['quality_score'].min() >= 0
@@ -140,7 +140,7 @@ class TestFeatureExtraction:
 
     def test_feature_extractor(self):
         """Test feature extraction from text content"""
-        from ml.models.feature_extractor import FeatureExtractor
+        from ml.models.feature_extractor import FeatureExtractor, HLDFeatures
 
         extractor = FeatureExtractor()
 
@@ -155,10 +155,10 @@ class TestFeatureExtraction:
 
         features = extractor.extract(sample_text)
 
-        assert isinstance(features, dict)
-        assert len(features) > 0
+        assert isinstance(features, HLDFeatures)
+        assert features.word_count > 0
         # Should have text metrics, structure metrics, etc.
-        assert 'word_count' in features or 'sentence_count' in features
+        assert hasattr(features, 'word_count') and hasattr(features, 'sentence_count')
 
 
 # ============================================================================
@@ -169,22 +169,25 @@ class TestQualityScoring:
 
     def test_quality_scorer(self):
         """Test rule-based quality scorer"""
-        from ml.models.quality_scorer import RuleBasedQualityScorer
+        from ml.models.quality_scorer import RuleBasedQualityScorer, QualityScore
 
         scorer = RuleBasedQualityScorer()
 
-        sample_hld = {
-            'word_count': 1000,
-            'header_count': 10,
-            'has_security_section': True,
-            'has_api_spec': True,
-            'completeness_score': 80
-        }
+        sample_text = """
+        # System Architecture
+        This is a comprehensive HLD document with security considerations.
+        ## Security Section
+        OAuth2 and JWT authentication are implemented.
+        ## API Specification
+        RESTful endpoints with proper documentation.
+        """
 
-        score = scorer.score_completeness(sample_hld)
+        score = scorer.score(sample_text)
 
-        assert isinstance(score, (int, float))
-        assert 0 <= score <= 100
+        assert isinstance(score, QualityScore)
+        assert 0 <= score.overall_score <= 100
+        assert 0 <= score.completeness <= 100
+        assert 0 <= score.clarity <= 100
 
 
 # ============================================================================
@@ -252,12 +255,13 @@ class TestOutputComposition:
             prd_markdown=prd_markdown,
             authentication=auth_data,
             integrations=[],
-            domain={'entities': [], 'apis': []},
-            behavior={'use_cases': [], 'nfrs': {}},
-            quality_score={'overall_score': 85, 'completeness': 80, 'clarity': 90,
-                          'consistency': 85, 'security': 80, 'recommendations': [],
-                          'missing_elements': []},
-            diagrams={'class_text': 'classDiagram...', 'sequence_texts': []},
+            entities=[],
+            apis=[],
+            use_cases=[],
+            nfrs={},
+            risks=[],
+            class_mermaid_text='classDiagram...',
+            sequence_mermaid_texts=[],
             hld_base_dir=None
         )
 
@@ -314,18 +318,20 @@ class TestErrorHandling:
 
     def test_invalid_feature_values(self):
         """Test handling of invalid feature values"""
-        from ml.models.feature_extractor import FeatureExtractor
+        from ml.models.feature_extractor import FeatureExtractor, HLDFeatures
 
         extractor = FeatureExtractor()
 
         # Test with empty string
         features = extractor.extract("")
-        assert isinstance(features, dict)
+        assert isinstance(features, HLDFeatures)
+        assert features.word_count == 0
 
         # Test with very long text
         long_text = "word " * 10000
         features = extractor.extract(long_text)
-        assert isinstance(features, dict)
+        assert isinstance(features, HLDFeatures)
+        assert features.word_count > 0
 
 
 # ============================================================================
